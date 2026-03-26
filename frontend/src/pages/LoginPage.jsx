@@ -78,7 +78,13 @@ export default function LoginPage() {
           {apiError && (
             <div className="login-error-banner">
               <span className="error-icon">⚠</span>
-              {apiError}
+              <div className="error-content">
+                <p>{apiError}</p>
+                <div className="diagnostic-hints">
+                  <p>Check: <a href="https://dashboard-ptl.onrender.com/api/health" target="_blank">API Health</a></p>
+                  <p>Check: <a href="https://dashboard-ptl.onrender.com/api/test-db" target="_blank">DB Connection</a></p>
+                </div>
+              </div>
             </div>
           )}
 

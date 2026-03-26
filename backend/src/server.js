@@ -19,19 +19,7 @@ const dashboardRoutes = require('./routes/dashboard');
 
 // Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      process.env.CLIENT_URL
-    ];
-
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: '*', // 🔓 Temporarily allow all for debugging
   credentials: true
 }));
 
@@ -49,6 +37,28 @@ app.use('/api/dashboard', dashboardRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// 🔍 DB Connection Test Route
+app.get('/api/test-db', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    const [results] = await sequelize.query("SELECT 1+1 AS result");
+
+    res.json({
+      status: 'success',
+      message: 'Database connection is ACTIVE',
+      db_check: results[0].result === 2
+    });
+
+  } catch (error) {
+    console.error("❌ DB TEST FAILED:", error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection FAILED',
+      details: error.message
+    });
+  }
 });
 
 // Error handler
