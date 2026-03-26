@@ -5,15 +5,29 @@ const { connectDB, sequelize } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 
-// Connect DB
-connectDB();
+const startServer = async () => {
+  try {
+    await connectDB();
 
-// 👇 IMPORT MODELS HERE
-require('./models/User');
+    // 👇 Import model AFTER DB connect
+    require('./models/User');
 
-// 👇 THEN SYNC
-sequelize.sync({ alter: true })
-  .then(() => console.log('✅ Models synced'));
+    // 👇 FORCE sync (temporary)
+    await sequelize.sync({ force: true });
+
+    console.log("✅ Tables created");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error("❌ Server start error:", error);
+  }
+};
+
+startServer();
+
 
 // Middleware
 app.use(cors({
