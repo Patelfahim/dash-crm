@@ -51,10 +51,13 @@ router.post('/login', async (req, res) => {
     console.log("✅ Match result:", isMatch);
 
     if (!isMatch) {
+      console.log("❌ Password mismatch for user:", email);
       return res.status(401).json({
         message: 'Invalid email or password'
       });
     }
+
+    console.log("🎉 Login successful for user:", email);
 
     // success
     res.json({
@@ -86,8 +89,8 @@ router.get('/me', protect, (req, res) => {
 });
 
 
-// 🌱 SEED USER
-router.post('/seed', async (req, res) => {
+// 🌱 SEED USER (CHANGED TO GET FOR BROWSER ACCESS)
+router.get('/seed', async (req, res) => {
   try {
     console.log("🌱 Seeding user...");
 
