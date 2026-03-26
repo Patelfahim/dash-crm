@@ -19,8 +19,8 @@ const generateToken = (id) => {
 };
 
 
-// 🚀 LOGIN
-router.get('/login', async (req, res) => {
+// 🚀 LOGIN (FIXED → POST)
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -86,15 +86,13 @@ router.get('/me', protect, (req, res) => {
 });
 
 
-// 🌱 SEED USER (FIXED)
+// 🌱 SEED USER
 router.post('/seed', async (req, res) => {
   try {
     console.log("🌱 Seeding user...");
 
-    // delete old users (IMPORTANT)
     await User.destroy({ where: {} });
 
-    // hash password
     const hashedPassword = await bcrypt.hash('Demo@1234', 10);
 
     const user = await User.create({

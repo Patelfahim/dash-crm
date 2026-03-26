@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
@@ -8,6 +9,9 @@ const app = express();
 
 // DB
 const { connectDB, sequelize } = require('./config/db');
+
+// Models
+const User = require('./models/User');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -56,7 +60,36 @@ app.use((err, req, res, next) => {
 // PORT
 const PORT = process.env.PORT || 5001;
 
-// 🚀 START SERVER (FINAL FIX)
+// 🌱 AUTO SEED USER
+const seedUser = async () => {
+  try {
+    console.log("🌱 Checking admin user...");
+
+    const existing = await User.findOne({
+      where: { email: 'demo@crm.com' }
+    });
+
+    if (!existing) {
+      const hashedPassword = await bcrypt.hash('Demo@1234', 10);
+
+      await User.create({
+        name: 'Admin',
+        email: 'demo@crm.com',
+        password: hashedPassword,
+        role: 'admin'
+      });
+
+      console.log("✅ Admin user created");
+    } else {
+      console.log("ℹ️ Admin already exists");
+    }
+
+  } catch (error) {
+    console.error("❌ Seed error:", error);
+  }
+};
+
+// 🚀 START SERVER
 const startServer = async () => {
   console.log("🚀 Starting server...");
 
@@ -64,13 +97,13 @@ const startServer = async () => {
     console.log("👉 Connecting DB...");
     await connectDB();
 
-    console.log("👉 Loading models...");
-    require('./models/User');
-
     console.log("👉 Syncing database...");
     await sequelize.sync();
 
-    console.log("✅ Models synced");
+    console.log("👉 Seeding user...");
+    await seedUser();
+
+    console.log("✅ Server ready");
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
