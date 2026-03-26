@@ -20,7 +20,7 @@ const generateToken = (id) => {
 
 
 // 🚀 LOGIN
-router.post('/login', async (req, res) => {
+router.get('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
