@@ -5,19 +5,15 @@ const { connectDB, sequelize } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 
-// import models FIRST
+// Connect DB
+connectDB();
+
+// 👇 IMPORT MODELS HERE
 require('./models/User');
 
-// then sync
+// 👇 THEN SYNC
 sequelize.sync({ alter: true })
   .then(() => console.log('✅ Models synced'));
-dotenv.config();
-
-const app = express();
-
-// Connect to MySQL
-connectDB();
-sequelize.sync({ alter: true }).then(() => console.log('✅ Models synced'));
 
 // Middleware
 app.use(cors({
