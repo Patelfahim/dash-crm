@@ -1,4 +1,5 @@
 console.log("🔥 AUTH ROUTES LOADED");
+
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
@@ -6,6 +7,7 @@ const bcrypt = require('bcrypt');
 
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+
 
 // 🔐 Generate JWT token
 const generateToken = (id) => {
@@ -17,39 +19,44 @@ const generateToken = (id) => {
 };
 
 
-// 🚀 @route POST /api/auth/login
-// @desc  Login user
-// @access Public
+// 🚀 LOGIN
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ Validation
+    console.log("📥 Login attempt:", email);
+
+    // validation
     if (!email || !password) {
       return res.status(400).json({
-        message: 'Please provide email and password.'
+        message: 'Please provide email and password'
       });
     }
 
-    // ✅ Check user
+    // find user
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
+      console.log("❌ User not found");
       return res.status(401).json({
-        message: 'Invalid email or password.'
+        message: 'Invalid email or password'
       });
     }
 
-    // ✅ Compare password (FIXED)
+    console.log("🔐 Stored hash:", user.password);
+
+    // compare password
     const isMatch = await bcrypt.compare(password, user.password);
+
+    console.log("✅ Match result:", isMatch);
 
     if (!isMatch) {
       return res.status(401).json({
-        message: 'Invalid email or password.'
+        message: 'Invalid email or password'
       });
     }
 
-    // ✅ Success
+    // success
     res.json({
       success: true,
       token: generateToken(user.id),
@@ -62,61 +69,45 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Login error:', error);
+    console.error("❌ Login error:", error);
     res.status(500).json({
-      message: 'Server error during login.'
+      message: 'Server error'
     });
   }
 });
 
 
-// 🔐 @route GET /api/auth/me
-// @desc  Get current user
-// @access Private
+// 🔐 GET CURRENT USER
 router.get('/me', protect, (req, res) => {
   res.json({
     success: true,
-    user: {
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email,
-      role: req.user.role
-    }
+    user: req.user
   });
 });
 
 
-// 🌱 @route POST /api/auth/seed
-// @desc  Create demo user
-// @access Public
+// 🌱 SEED USER (FIXED)
 router.post('/seed', async (req, res) => {
   try {
-    const existing = await User.findOne({
-      where: { email: 'demo@crm.com' }
-    });
+    console.log("🌱 Seeding user...");
 
-    if (existing) {
-      return res.json({
-        message: 'Demo user already exists',
-        credentials: {
-          email: 'demo@crm.com',
-          password: 'Demo@1234'
-        }
-      });
-    }
+    // delete old users (IMPORTANT)
+    await User.destroy({ where: {} });
 
-    // 🔐 Hash password before saving
+    // hash password
     const hashedPassword = await bcrypt.hash('Demo@1234', 10);
 
-    await User.create({
-      name: 'Alex Morgan',
+    const user = await User.create({
+      name: 'Admin User',
       email: 'demo@crm.com',
       password: hashedPassword,
       role: 'admin'
     });
 
-    res.status(201).json({
-      message: 'Demo user created!',
+    console.log("✅ User created:", user.email);
+
+    res.json({
+      message: 'User created successfully',
       credentials: {
         email: 'demo@crm.com',
         password: 'Demo@1234'
@@ -124,8 +115,10 @@ router.post('/seed', async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    console.error("❌ Seed error:", error);
+    res.status(500).json({
+      message: error.message
+    });
   }
 });
 
