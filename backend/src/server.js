@@ -1,46 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+dotenv.config();
+
+const app = express();
+
+// DB
 const { connectDB, sequelize } = require('./config/db');
+
+// Routes
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
-require('./models/User');
-
-
-const startServer = async () => {
-  try {
-    console.log("🚀 Starting server...");
-
-    await connectDB();
-
-    // 👇 VERY IMPORTANT
-    require('./models/User');
-
-    await sequelize.sync();
-
-    console.log("✅ Models synced");
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
-
-  } catch (error) {
-    console.error("❌ Startup error:", error);
-  }
-};
-
-startServer();
-
 
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  process.env.CLIENT_URL
-  ];
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.CLIENT_URL === origin) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.CLIENT_URL
+    ];
+
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -48,14 +30,15 @@ const allowedOrigins = [
   },
   credentials: true
 }));
+
 app.use(express.json());
 
-
+// Root route
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-// Routes
+// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
@@ -66,11 +49,37 @@ app.get('/api/health', (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("❌ ERROR:", err);
   res.status(500).json({ message: 'Internal Server Error' });
 });
 
+// PORT
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+
+// 🚀 START SERVER (FINAL FIX)
+const startServer = async () => {
+  console.log("🚀 Starting server...");
+
+  try {
+    console.log("👉 Connecting DB...");
+    await connectDB();
+
+    console.log("👉 Loading models...");
+    require('./models/User');
+
+    console.log("👉 Syncing database...");
+    await sequelize.sync();
+
+    console.log("✅ Models synced");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error("❌ FULL STARTUP ERROR:");
+    console.error(error);
+  }
+};
+
+startServer();
