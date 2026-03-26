@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -29,15 +30,16 @@ const setupDB = async () => {
 
     const existingAdmin = await User.findOne({ where: { email: adminEmail } });
     if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
       await User.create({
         name: 'Super Admin',
         email: adminEmail,
-        password: adminPassword,
+        password: hashedPassword,
         role: 'admin'
       });
-      console.log(`✅ Admin user created: ${adminEmail} / ${adminPassword}`);
+      console.log(`✅ Admin user created: ${adminEmail}`);
     } else {
-        console.log(`ℹ️ Admin user already exists: ${adminEmail} / ${adminPassword}`);
+        console.log(`ℹ️ Admin user already exists: ${adminEmail}`);
     }
 
     process.exit(0);
