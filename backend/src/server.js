@@ -4,25 +4,28 @@ const dotenv = require('dotenv');
 const { connectDB, sequelize } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
+require('./models/User');
+
 
 const startServer = async () => {
   try {
+    console.log("🚀 Starting server...");
+
     await connectDB();
 
-    // 👇 Import model AFTER DB connect
+    // 👇 VERY IMPORTANT
     require('./models/User');
 
-    // 👇 FORCE sync (temporary)
-    await sequelize.sync({ force: true });
+    await sequelize.sync();
 
-    console.log("✅ Tables created");
+    console.log("✅ Models synced");
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
 
   } catch (error) {
-    console.error("❌ Server start error:", error);
+    console.error("❌ Startup error:", error);
   }
 };
 
