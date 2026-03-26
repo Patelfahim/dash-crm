@@ -48,14 +48,63 @@ export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [tasks, setTasks] = useState(MOCK_TASKS);
+  
+  // Data State
+  const [stats, setStats] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [pipeline, setPipeline] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [stats] = useState(MOCK_STATS);
-  const [leads] = useState(MOCK_LEADS);
-  const [pipeline] = useState(MOCK_PIPELINE);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  // CRUD State
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [sRes, lRes, tRes] = await Promise.all([
+        dashboardAPI.getStats(),
+        dashboardAPI.getLeads(),
+        dashboardAPI.getTasks()
+      ]);
+      setStats(sRes.data.data);
+      setLeads(lRes.data.data);
+      setTasks(tRes.data.data);
+      
+      // Calculate pipeline from leads
+      const stages = ['Discovery', 'Qualified', 'Proposal', 'Negotiation', 'Won'];
+      const pipe = stages.map(stage => {
+        const stageLeads = lRes.data.data.filter(l => l.status === stage);
+        const val = stageLeads.reduce((acc, l) => acc + (parseInt(l.value.replace(/[^0-9]/g, '')) || 0), 0);
+        return {
+          stage,
+          count: stageLeads.length,
+          value: `₹${val.toLocaleString('en-IN')}`,
+          color: STAGE_COLORS[stage] || '#ccc',
+          pct: lRes.data.data.length > 0 ? (stageLeads.length / lRes.data.data.length) * 100 : 0
+        };
+      });
+      setPipeline(pipe);
+
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -72,8 +121,71 @@ export default function DashboardPage() {
     navigate('/login');
   };
 
-  const toggleTask = (id) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const toggleTask = async (id) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    try {
+      await dashboardAPI.updateTask(id, { status: task.status === 'Completed' ? 'Pending' : 'Completed' });
+      fetchData();
+    } catch (err) {
+      console.error("Toggle error:", err);
+    }
+  };
+
+  const handleLeadSubmit = async (formData) => {
+    setFormLoading(true);
+    try {
+      if (editingItem) {
+        await dashboardAPI.updateLead(editingItem.id, formData);
+      } else {
+        await dashboardAPI.createLead(formData);
+      }
+      setShowLeadModal(false);
+      setEditingItem(null);
+      fetchData();
+    } catch (err) {
+      alert("Error saving lead");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteLead = async (id) => {
+    if (!window.confirm("Are you sure?")) return;
+    try {
+      await dashboardAPI.deleteLead(id);
+      fetchData();
+    } catch (err) {
+      alert("Error deleting lead");
+    }
+  };
+
+  const handleTaskSubmit = async (formData) => {
+    setFormLoading(true);
+    try {
+      if (editingItem) {
+        await dashboardAPI.updateTask(editingItem.id, formData);
+      } else {
+        await dashboardAPI.createTask(formData);
+      }
+      setShowTaskModal(false);
+      setEditingItem(null);
+      fetchData();
+    } catch (err) {
+      alert("Error saving task");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    if (!window.confirm("Are you sure?")) return;
+    try {
+      await dashboardAPI.deleteTask(id);
+      fetchData();
+    } catch (err) {
+      alert("Error deleting task");
+    }
   };
 
   const filteredLeads = leads.filter(l =>
@@ -149,17 +261,27 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="header-right">
-            {(activeTab === 'leads') && (
-              <div className="search-wrap">
-                <span className="search-icon">⌕</span>
-                <input
-                  className="search-input"
-                  placeholder="Search leads..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                />
-              </div>
+            {activeTab === 'leads' && (
+              <button className="add-btn-primary" onClick={() => { setEditingItem(null); setShowLeadModal(true); }}>
+                + Add Lead
+              </button>
             )}
+            {activeTab === 'tasks' && (
+              <button className="add-btn-primary" onClick={() => { setEditingItem(null); setShowTaskModal(true); }}>
+                + Add Task
+              </button>
+            )}
+            
+            <div className="search-wrap">
+              <span className="search-icon">⌕</span>
+              <input
+                className="search-input"
+                placeholder={`Search ${activeTab}...`}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+
             <div className="profile-wrap" ref={profileRef}>
               <button className="profile-btn" onClick={() => setProfileOpen(o => !o)}>
                 <div className="profile-avatar">
@@ -187,29 +309,84 @@ export default function DashboardPage() {
 
         {/* Content area */}
         <div className="dash-content">
-          {activeTab === 'overview' && (
-            <OverviewTab stats={stats} leads={leads} tasks={tasks} toggleTask={toggleTask} pipeline={pipeline} />
+          {loading ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading your pipeline...</p>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'overview' && (
+                <OverviewTab 
+                  stats={stats} 
+                  leads={leads} 
+                  tasks={tasks} 
+                  toggleTask={toggleTask} 
+                  pipeline={pipeline} 
+                />
+              )}
+              {activeTab === 'leads' && (
+                <LeadsTab 
+                  leads={filteredLeads} 
+                  onEdit={(l) => { setEditingItem(l); setShowLeadModal(true); }}
+                  onDelete={handleDeleteLead}
+                />
+              )}
+              {activeTab === 'pipeline' && <PipelineTab pipeline={pipeline} />}
+              {activeTab === 'tasks' && (
+                <TasksTab 
+                  tasks={tasks} 
+                  toggleTask={toggleTask}
+                  onEdit={(t) => { setEditingItem(t); setShowTaskModal(true); }}
+                  onDelete={handleDeleteTask}
+                />
+              )}
+            </>
           )}
-          {activeTab === 'leads' && <LeadsTab leads={filteredLeads} />}
-          {activeTab === 'pipeline' && <PipelineTab pipeline={pipeline} />}
-          {activeTab === 'tasks' && <TasksTab tasks={tasks} toggleTask={toggleTask} />}
         </div>
       </main>
+
+      {showLeadModal && (
+        <LeadModal 
+          onClose={() => setShowLeadModal(false)} 
+          onSubmit={handleLeadSubmit}
+          initialData={editingItem}
+          loading={formLoading}
+        />
+      )}
+
+      {showTaskModal && (
+        <TaskModal 
+          onClose={() => setShowTaskModal(false)} 
+          onSubmit={handleTaskSubmit}
+          initialData={editingItem}
+          loading={formLoading}
+        />
+      )}
     </div>
   );
 }
 
 /* ── Overview Tab ── */
 function OverviewTab({ stats, leads, tasks, toggleTask, pipeline }) {
-  const pendingTasks = tasks.filter(t => !t.done).slice(0, 4);
+  if (!stats) return null;
+  
+  const pendingTasks = tasks.filter(t => t.status !== 'Completed').slice(0, 4);
   const recentLeads = leads.slice(0, 4);
+
+  const statItems = [
+    { label: 'Total Leads', value: stats.totalLeads, change: '+12%', up: true },
+    { label: 'Hot Leads', value: stats.hotLeads, change: '+5', up: true },
+    { label: 'Revenue', value: stats.revenue, change: '+18%', up: true },
+    { label: 'Win Rate', value: stats.conversionRate, change: '+2%', up: true },
+  ];
 
   return (
     <div className="overview-grid fade-up">
       {/* Stat cards */}
       <div className="stats-row">
-        {Object.entries(stats).map(([key, s]) => (
-          <div className="stat-card" key={key}>
+        {statItems.map((s, idx) => (
+          <div className="stat-card" key={idx}>
             <span className="stat-card-label">{s.label}</span>
             <div className="stat-card-value">{s.value}</div>
             <span className={`stat-card-change ${s.up ? 'up' : 'down'}`}>
@@ -223,7 +400,7 @@ function OverviewTab({ stats, leads, tasks, toggleTask, pipeline }) {
       <div className="overview-card pipeline-mini">
         <div className="card-header">
           <h3 className="card-title">Pipeline Overview</h3>
-          <span className="card-total">Total: ₹2.76Cr</span>
+          <span className="card-total">Standard View</span>
         </div>
         <div className="pipeline-bars">
           {pipeline.map(p => (
@@ -245,20 +422,21 @@ function OverviewTab({ stats, leads, tasks, toggleTask, pipeline }) {
       <div className="overview-card">
         <div className="card-header">
           <h3 className="card-title">Recent Leads</h3>
-          <span className="card-link">View all →</span>
         </div>
         <div className="leads-list">
           {recentLeads.map(l => (
             <div className="lead-row" key={l.id}>
-              <div className="lead-avatar" style={{ background: l.color + '22', color: l.color }}>{l.avatar}</div>
+              <div className="lead-avatar" style={{ background: (STAGE_COLORS[l.status] || '#ccc') + '22', color: STAGE_COLORS[l.status] }}>
+                {l.name.charAt(0)}
+              </div>
               <div className="lead-info">
                 <span className="lead-name">{l.name}</span>
                 <span className="lead-company">{l.company}</span>
               </div>
               <div className="lead-right">
                 <span className="lead-value">{l.value}</span>
-                <span className="lead-stage-badge" style={{ background: STAGE_COLORS[l.stage] + '18', color: STAGE_COLORS[l.stage] }}>
-                  {l.stage}
+                <span className="lead-stage-badge" style={{ background: (STAGE_COLORS[l.status] || '#ccc') + '18', color: STAGE_COLORS[l.status] }}>
+                  {l.status}
                 </span>
               </div>
             </div>
@@ -269,8 +447,7 @@ function OverviewTab({ stats, leads, tasks, toggleTask, pipeline }) {
       {/* Tasks */}
       <div className="overview-card">
         <div className="card-header">
-          <h3 className="card-title">Upcoming Tasks</h3>
-          <span className="card-link">View all →</span>
+          <h3 className="card-title">Pending Tasks</h3>
         </div>
         <div className="tasks-list">
           {pendingTasks.map(t => (
@@ -283,7 +460,7 @@ function OverviewTab({ stats, leads, tasks, toggleTask, pipeline }) {
 }
 
 /* ── Leads Tab ── */
-function LeadsTab({ leads }) {
+function LeadsTab({ leads, onEdit, onDelete }) {
   return (
     <div className="fade-up">
       <div className="leads-table-wrap">
@@ -302,21 +479,23 @@ function LeadsTab({ leads }) {
               <tr key={l.id} className="lead-table-row">
                 <td>
                   <div className="lead-cell">
-                    <div className="lead-avatar" style={{ background: l.color + '22', color: l.color }}>{l.avatar}</div>
+                    <div className="lead-avatar" style={{ background: (STAGE_COLORS[l.status] || '#ccc') + '22', color: STAGE_COLORS[l.status] }}>
+                      {l.name.charAt(0)}
+                    </div>
                     <span className="lead-name">{l.name}</span>
                   </div>
                 </td>
                 <td><span className="table-company">{l.company}</span></td>
                 <td><span className="table-value">{l.value}</span></td>
                 <td>
-                  <span className="lead-stage-badge" style={{ background: STAGE_COLORS[l.stage] + '18', color: STAGE_COLORS[l.stage] }}>
-                    {l.stage}
+                  <span className="lead-stage-badge" style={{ background: (STAGE_COLORS[l.status] || '#ccc') + '18', color: STAGE_COLORS[l.status] }}>
+                    {l.status}
                   </span>
                 </td>
                 <td>
                   <div className="table-actions">
-                    <button className="action-btn" title="Edit">✎</button>
-                    <button className="action-btn" title="View">◈</button>
+                    <button className="action-btn" onClick={() => onEdit(l)} title="Edit">✎</button>
+                    <button className="action-btn delete" onClick={() => onDelete(l.id)} title="Delete">✕</button>
                   </div>
                 </td>
               </tr>
@@ -347,7 +526,7 @@ function PipelineTab({ pipeline }) {
       <div className="pipeline-detail-card">
         <h3 className="card-title" style={{ marginBottom: 24 }}>Stage Breakdown</h3>
         {pipeline.map(p => {
-          const pct = Math.round((p.count / total) * 100);
+          const pct = total > 0 ? Math.round((p.count / total) * 100) : 0;
           return (
             <div className="pipeline-detail-row" key={p.stage}>
               <div className="pdr-left">
@@ -372,23 +551,41 @@ function PipelineTab({ pipeline }) {
 }
 
 /* ── Tasks Tab ── */
-function TasksTab({ tasks, toggleTask }) {
-  const pending = tasks.filter(t => !t.done);
-  const done = tasks.filter(t => t.done);
+function TasksTab({ tasks, toggleTask, onEdit, onDelete }) {
+  const pending = tasks.filter(t => t.status !== 'Completed');
+  const done = tasks.filter(t => t.status === 'Completed');
 
   return (
     <div className="fade-up tasks-page">
       <div className="tasks-section">
         <h3 className="tasks-section-title">Pending <span className="tasks-count">{pending.length}</span></h3>
         <div className="tasks-list-full">
-          {pending.map(t => <TaskItem key={t.id} task={t} onToggle={toggleTask} full />)}
+          {pending.map(t => (
+            <TaskItem 
+              key={t.id} 
+              task={t} 
+              onToggle={toggleTask} 
+              full 
+              onEdit={() => onEdit(t)}
+              onDelete={() => onDelete(t.id)}
+            />
+          ))}
         </div>
       </div>
       {done.length > 0 && (
         <div className="tasks-section">
           <h3 className="tasks-section-title">Completed <span className="tasks-count done">{done.length}</span></h3>
           <div className="tasks-list-full">
-            {done.map(t => <TaskItem key={t.id} task={t} onToggle={toggleTask} full />)}
+            {done.map(t => (
+              <TaskItem 
+                key={t.id} 
+                task={t} 
+                onToggle={toggleTask} 
+                full 
+                onEdit={() => onEdit(t)}
+                onDelete={() => onDelete(t.id)}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -397,19 +594,116 @@ function TasksTab({ tasks, toggleTask }) {
 }
 
 /* ── Reusable TaskItem ── */
-function TaskItem({ task, onToggle, full }) {
+function TaskItem({ task, onToggle, full, onEdit, onDelete }) {
+  const isDone = task.status === 'Completed';
   return (
-    <div className={`task-item ${task.done ? 'task-done' : ''}`}>
-      <button className={`task-check ${task.done ? 'checked' : ''}`} onClick={() => onToggle(task.id)}>
-        {task.done && '✓'}
+    <div className={`task-item ${isDone ? 'task-done' : ''}`}>
+      <button className={`task-check ${isDone ? 'checked' : ''}`} onClick={() => onToggle(task.id)}>
+        {isDone && '✓'}
       </button>
       <div className="task-body">
         <span className="task-title">{task.title}</span>
         {full && (
-          <span className={`task-priority prio-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>
+          <span className={`task-priority prio-${task.priority?.toLowerCase()}`}>{task.priority}</span>
         )}
       </div>
       <span className="task-due">{task.due}</span>
+      {full && (
+        <div className="task-actions">
+          <button className="action-btn-sm" onClick={onEdit}>✎</button>
+          <button className="action-btn-sm delete" onClick={onDelete}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Lead Modal ── */
+function LeadModal({ onClose, onSubmit, initialData, loading }) {
+  const [formData, setFormData] = useState(initialData || {
+    name: '', company: '', email: '', status: 'Discovery', value: '₹0', source: 'Direct'
+  });
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card fade-up">
+        <div className="modal-header">
+          <h2 className="modal-title">{initialData ? 'Edit Lead' : 'Add New Lead'}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }}>
+          <div className="form-group">
+            <label>Contact Name</label>
+            <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Priya Sharma" />
+          </div>
+          <div className="form-group">
+            <label>Company</label>
+            <input required value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} placeholder="e.g. TechNova" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Deal Value</label>
+              <input value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} placeholder="₹0" />
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                {Object.keys(STAGE_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Saving...' : initialData ? 'Update Lead' : 'Create Lead'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Task Modal ── */
+function TaskModal({ onClose, onSubmit, initialData, loading }) {
+  const [formData, setFormData] = useState(initialData || {
+    title: '', priority: 'Medium', due: '', assignee: '', status: 'Pending'
+  });
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card fade-up">
+        <div className="modal-header">
+          <h2 className="modal-title">{initialData ? 'Edit Task' : 'Add New Task'}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }}>
+          <div className="form-group">
+            <label>Task Title</label>
+            <input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Follow up with client" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Priority</label>
+              <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Due Date</label>
+              <input type="date" value={formData.due} onChange={e => setFormData({...formData, due: e.target.value})} />
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Saving...' : initialData ? 'Update Task' : 'Create Task'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

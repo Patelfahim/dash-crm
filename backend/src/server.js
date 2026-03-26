@@ -12,6 +12,8 @@ const { connectDB, sequelize } = require('./config/db');
 
 // Models
 const User = require('./models/User');
+const Lead = require('./models/Lead');
+const Task = require('./models/Task');
 
 // Routes
 const authRoutes = require('./routes/auth');
