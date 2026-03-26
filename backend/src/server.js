@@ -5,6 +5,12 @@ const { connectDB, sequelize } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 
+// import models FIRST
+require('./models/User');
+
+// then sync
+sequelize.sync({ alter: true })
+  .then(() => console.log('✅ Models synced'));
 dotenv.config();
 
 const app = express();
