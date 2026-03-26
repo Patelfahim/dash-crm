@@ -10,7 +10,7 @@ const setupDB = async () => {
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST || 'localhost',
       user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
+      password: process.env.DB_PASSWORD || 'Patelfahim@120',
     });
     const dbName = process.env.DB_NAME || 'crm_dashboard';
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
