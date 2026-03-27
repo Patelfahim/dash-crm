@@ -22,7 +22,7 @@ A polished, production-ready full stack CRM dashboard built with React.js, Node.
 | Frontend  | React.js, React Router v6, Axios |
 | Backend   | Node.js, Express.js         |
 | Database  | MySQL + Sequelize           |
-| Auth      | JWT (jsonwebtoken) (Plain Text Passwords) |
+| Auth      | JWT (jsonwebtoken) + bcrypt password hashing |
 | Styling   | Pure CSS (no UI library)    |
 
 ---
@@ -137,20 +137,40 @@ The app typically runs at **http://localhost:5173** (or 3000 depending on your V
 ## 🔌 API Endpoints
 
 ### Auth
-| Method | Endpoint            | Auth | Description          |
-|--------|---------------------|------|----------------------|
-| POST   | `/api/auth/login`   | No   | Login with email+password |
-| GET    | `/api/auth/me`      | Yes  | Get current user     |
-| POST   | `/api/auth/seed`    | No   | Create demo user     |
+| Method | Endpoint          | Auth | Description               |
+|--------|-------------------|------|---------------------------|
+| POST   | `/api/auth/login` | No   | Login with email+password |
+| GET    | `/api/auth/me`    | Yes  | Get current user          |
+| POST   | `/api/auth/seed`  | No   | Create demo user          |
 
 ### Dashboard
-| Method | Endpoint                  | Auth | Description       |
-|--------|---------------------------|------|-------------------|
-| GET    | `/api/dashboard/stats`    | Yes  | Summary stats     |
-| GET    | `/api/dashboard/leads`    | Yes  | Leads list        |
-| GET    | `/api/dashboard/tasks`    | Yes  | Tasks list        |
-| GET    | `/api/dashboard/users`    | Yes  | Team members      |
+| Method | Endpoint               | Auth | Description   |
+|--------|------------------------|------|---------------|
+| GET    | `/api/dashboard/stats` | Yes  | Summary stats |
 
+### Leads
+| Method | Endpoint                     | Auth | Description       |
+|--------|------------------------------|------|-------------------|
+| GET    | `/api/dashboard/leads`       | Yes  | Get all leads     |
+| POST   | `/api/dashboard/leads`       | Yes  | Create a new lead |
+| PUT    | `/api/dashboard/leads/:id`   | Yes  | Update a lead     |
+| DELETE | `/api/dashboard/leads/:id`   | Yes  | Delete a lead     |
+
+### Tasks
+| Method | Endpoint                     | Auth | Description       |
+|--------|------------------------------|------|-------------------|
+| GET    | `/api/dashboard/tasks`       | Yes  | Get all tasks     |
+| POST   | `/api/dashboard/tasks`       | Yes  | Create a new task |
+| PUT    | `/api/dashboard/tasks/:id`   | Yes  | Update a task     |
+| DELETE | `/api/dashboard/tasks/:id`   | Yes  | Delete a task     |
+
+### Users
+| Method | Endpoint                     | Auth | Description       |
+|--------|------------------------------|------|-------------------|
+| GET    | `/api/dashboard/users`       | Yes  | Get all users     |
+| POST   | `/api/dashboard/users`       | Yes  | Create a new user |
+| PUT    | `/api/dashboard/users/:id`   | Yes  | Update a user     |
+| DELETE | `/api/dashboard/users/:id`   | Yes  | Delete a user     |
 ---
 
 ## 🔐 Login Credentials (Demo)
@@ -163,7 +183,7 @@ Password: Admin@123
 ```
 
 *(You can also use the `/api/auth/seed` endpoint to create the standard `demo@crm.com` user).*
-
+> Passwords are hashed using bcrypt before storage.
 ---
 
 ## 📝 License
