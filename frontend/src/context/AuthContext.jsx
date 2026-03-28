@@ -10,20 +10,19 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    else delete axios.defaults.headers.common['Authorization'];
-  }, [token]);
-
-  useEffect(() => {
     const loadUser = async () => {
       if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         try {
           const { data } = await axios.get(`${API_BASE}/auth/me`);
           setUser(data.user);
         } catch {
           setToken(null);
           localStorage.removeItem('patel_token');
+          delete axios.defaults.headers.common['Authorization'];
         }
+      } else {
+        delete axios.defaults.headers.common['Authorization'];
       }
       setLoading(false);
     };
