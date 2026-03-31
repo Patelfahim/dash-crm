@@ -184,7 +184,7 @@ After running the `init.js` setup script, the default Super Admin is:
 
 ```
 Email:    admin@crm.com
-Password: Admin@123
+Password: Admin@1234
 ```
 
 *(You can also use the `/api/auth/seed` endpoint to create the standard `demo@crm.com` user).*
