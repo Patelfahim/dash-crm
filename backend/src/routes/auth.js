@@ -95,6 +95,10 @@ router.get('/seed', async (req, res) => {
   try {
     console.log("🌱 Seeding users...");
 
+    // Force alter the role column just in case it's an ENUM or too small
+    const { sequelize } = require('../config/db');
+    await sequelize.query("ALTER TABLE Users MODIFY COLUMN role VARCHAR(255) DEFAULT 'user'");
+
     await User.destroy({ where: {} });
 
     const usersToSeed = [

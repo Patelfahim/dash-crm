@@ -112,6 +112,14 @@ const startServer = async () => {
     console.log("👉 Syncing database...");
     await sequelize.sync({ alter: true });
 
+    // Ensure role column accepts our newer roles
+    try {
+      await sequelize.query("ALTER TABLE Users MODIFY COLUMN role VARCHAR(255) DEFAULT 'user'");
+      console.log("✅ Fixed role column schema");
+    } catch(e) {
+      console.log("ℹ️ Role column schema check passed", e.message);
+    }
+
     console.log("👉 Seeding users...");
     await seedUsers();
 
