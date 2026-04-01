@@ -110,7 +110,7 @@ const startServer = async () => {
     await connectDB();
 
     console.log("👉 Syncing database...");
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
 
     console.log("👉 Seeding users...");
     await seedUsers();
