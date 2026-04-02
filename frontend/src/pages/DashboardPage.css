@@ -511,8 +511,9 @@
   margin-top: 10px;
 }
 .btn-secondary { background: var(--surface-2); border: 1px solid var(--border); padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn-primary { background: var(--gold); color: var(--ink); border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary { background: var(--gold); color: var(--ink); border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-primary:disabled { opacity: 0.8; cursor: not-allowed; }
+.btn-spinner { width: 16px; height: 16px; border: 2px solid rgba(13,13,18,0.3); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
 
 /* ── Loading State ── */
 .loading-state {

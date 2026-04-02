@@ -673,7 +673,7 @@ function LeadModal({ onClose, onSubmit, initialData, loading }) {
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : initialData ? 'Update Lead' : 'Create Lead'}
+              {loading ? <><span className="btn-spinner" /> Saving...</> : initialData ? 'Update Lead' : 'Create Lead'}
             </button>
           </div>
         </form>
@@ -717,7 +717,7 @@ function TaskModal({ onClose, onSubmit, initialData, loading }) {
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : initialData ? 'Update Task' : 'Create Task'}
+              {loading ? <><span className="btn-spinner" /> Saving...</> : initialData ? 'Update Task' : 'Create Task'}
             </button>
           </div>
         </form>
