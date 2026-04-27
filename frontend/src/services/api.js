@@ -1,6 +1,24 @@
 import axios from 'axios';
 const API_BASE = import.meta.env.VITE_API_URL || 'https://dashboard-ptl.onrender.com/api';
 
+// Map _id to id for frontend compatibility with MongoDB backend
+axios.interceptors.response.use(response => {
+  if (response.data && response.data.data) {
+    const mapId = (item) => {
+      if (item && typeof item === 'object' && item._id && !item.id) {
+        item.id = item._id;
+      }
+      return item;
+    };
+    if (Array.isArray(response.data.data)) {
+      response.data.data = response.data.data.map(mapId);
+    } else {
+      response.data.data = mapId(response.data.data);
+    }
+  }
+  return response;
+});
+
 export const dashboardAPI = {
   getStats: () => axios.get(`${API_BASE}/dashboard/stats`),
   
